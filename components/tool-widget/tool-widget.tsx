@@ -282,8 +282,8 @@ export function ToolWidget({ tool }: Props) {
     // reliably clean them up across success, timeout, and error paths.
     // Without this, a timeout rejection would skip clearInterval() and the
     // interval would keep overwriting the error state (Retry button hidden).
-    let tick: ReturnType<typeof window.setInterval> | undefined;
-    let timeoutId: ReturnType<typeof window.setTimeout> | undefined;
+    let tick: number | undefined;
+    let timeoutId: number | undefined;
 
     try {
       // --- Payload builders per widget type ---
@@ -541,7 +541,7 @@ export function ToolWidget({ tool }: Props) {
       // timeout rejection it kept firing and overwrote the error state back to
       // "loading" — hiding the Retry button and leaving UI stuck at 90%.
       if (tick !== undefined) {
-        clearInterval(tick);
+        window.clearInterval(tick);
       }
       if (timeoutId !== undefined) {
         window.clearTimeout(timeoutId);
