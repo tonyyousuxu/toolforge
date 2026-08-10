@@ -427,10 +427,7 @@ async function serverSideConvert(p: ReqBody) {
   })();
 
   return {
-    mime:
-      p.outputFormat === ".txt"
-        ? "text/plain;charset=utf-8"
-        : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     fileName,
     fileBytesBase64: outBase64,
     pagesProcessed,
