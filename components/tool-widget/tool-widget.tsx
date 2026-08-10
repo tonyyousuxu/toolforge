@@ -521,7 +521,7 @@ export function ToolWidget({ tool }: Props) {
               const decoded = decodeURIComponent(payloadPart);
               u8 = new TextEncoder().encode(decoded);
             }
-            const blob = new Blob([u8], { type: mime });
+            const blob = new Blob([u8 as BlobPart], { type: mime });
             result = { ...result, url: URL.createObjectURL(blob) };
           } catch {
             /* keep original data: URL on any error */
