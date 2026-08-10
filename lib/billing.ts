@@ -160,10 +160,11 @@ async function resolvePlanFromStripe(email: string): Promise<ProUserClaim> {
         limit: 5,
         expand: ["data.plan"],
       });
-      for (const sub of subs.data) {
+      for (const rawSub of subs.data) {
+        const sub = rawSub as any;
         const priceId = getStripePriceId();
         const matchesPro = sub.items.data.some(
-          (it) =>
+          (it: any) =>
             (typeof it.plan === "object" && it.plan && it.plan.id === priceId) ||
             (typeof it.price === "object" && it.price && it.price.id === priceId)
         );
@@ -174,19 +175,20 @@ async function resolvePlanFromStripe(email: string): Promise<ProUserClaim> {
 
         if (sub.status === "active" || sub.status === "trialing") {
           result.plan = "pro";
-          result.periodEnd = sub.current_period_end;
-          result.exp = sub.current_period_end;
+          result.periodEnd = sub.current_period_end as number | undefined;
+          result.exp = sub.current_period_end as number;
           return result;
         }
         if (sub.status === "past_due" || sub.status === "unpaid") {
           result.plan = "pro";
-          result.periodEnd = Math.min(sub.current_period_end, graceUntil);
-          result.exp = Math.min(sub.current_period_end ?? graceUntil, graceUntil);
+          const cpe = sub.current_period_end as number | undefined;
+          result.periodEnd = Math.min(cpe ?? graceUntil, graceUntil);
+          result.exp = Math.min(cpe ?? graceUntil, graceUntil);
           return result;
         }
         if (sub.status === "canceled" || sub.status === "incomplete_expired") {
           // Stay free but remember the period end.
-          result.periodEnd = sub.current_period_end ?? undefined;
+          result.periodEnd = sub.current_period_end as number | undefined;
         }
       }
     }

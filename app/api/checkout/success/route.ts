@@ -69,14 +69,14 @@ export async function GET(req: NextRequest): Promise<Response> {
     let periodEnd: number | undefined;
     let cookieExp: number;
 
-    const sub = session.subscription as Stripe.Subscription | null;
-    if (sub) {
+    const sub = session.subscription as any;
+    if (sub && typeof sub === "object") {
       // Active or trialing = Pro.
       // Canceled / past_due / unpaid = grant a grace 24h (PRD §M7) still Pro,
       // except fully 'canceled' revert to free.
-      const status = sub.status;
+      const status = sub.status as string;
       const graceUntil = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
-      periodEnd = sub.current_period_end ?? undefined;
+      periodEnd = (sub.current_period_end as number | undefined) ?? undefined;
 
       if (status === "active" || status === "trialing") {
         plan = "pro";
