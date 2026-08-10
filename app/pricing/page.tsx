@@ -1,28 +1,12 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PRO_FEATURE_MATRIX, PRO_PRICE_MONTHLY_USD } from "@/lib/billing";
-
-export const metadata: Metadata = {
-  title: "Pricing — Free vs Pro",
-  description: `ToolForge pricing: Free (3 ops/day, 10 MB) or Pro ($${PRO_PRICE_MONTHLY_USD}/mo, 1,000 ops/day, 50 MB, ad-free, priority queue).`,
-};
-
-/**
- * Module 7: Billing / Pricing page.
- *  - Free ($0) vs Pro ($9/mo, Recommended badge)
- *  - Feature checklist + comparison table + FAQ
- *
- * Prices & features are SINGLE SOURCE in lib/billing.ts PRO_FEATURE_MATRIX
- * so the same numbers appear on the pricing page, usage limit enforcement,
- * and Pro upgrade CTA widgets.
- *
- * Expansion:
- *  - Add a Team $29/mo card (create plan in Stripe, append to PLANS)
- *  - Add annual billing badge + "Save 20%" with Stripe config
- *  - Self-serve portal: /account/billing (Module 6 account page)
- * ------------------------------------------------------------------------- */
 
 /** Merge canonical matrix + a few marketing rows (fidelity, support, trial). */
 function buildFeatures(): Array<{
@@ -54,8 +38,6 @@ function buildFeatures(): Array<{
   ];
 }
 
-const FEATURES = buildFeatures();
-
 const FAQS: Array<{ q: string; a: string }> = [
   {
     q: "Can I cancel anytime?",
@@ -77,6 +59,65 @@ const FAQS: Array<{ q: string; a: string }> = [
 
 export default function PricingPage() {
   return (
+    <Suspense fallback={<div className="p-10 text-center text-muted-foreground">Loading…</div>}>
+      <PricingPageInner />
+    </Suspense>
+  );
+}
+
+function PricingPageInner() {
+  const router = useRouter();
+  const sp = useSearchParams();
+  const success = sp.get("success") === "1" || sp.get("pro") === "1";
+  const canceled = sp.get("canceled") === "1";
+  const pro = sp.get("pro") === "1";
+  const err = sp.get("error");
+
+  const features = useMemo(() => buildFeatures(), []);
+
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Auto-clear banner on user action (editing email, waiting 6s)
+  useEffect(() => {
+    if (!success) return;
+    const t = setTimeout(() => {
+      const url = new URL(window.location.href);
+      ["success", "pro", "canceled", "error", "m"].forEach((k) => url.searchParams.delete(k));
+      window.history.replaceState(null, "", url.pathname);
+    }, 8000);
+    return () => clearTimeout(t);
+  }, [success, canceled, err, pro]);
+
+  async function onUpgradeClick() {
+    const trimmed = email.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const json: any = await res.json().catch(() => ({}));
+      if (!json?.ok || !json.url) {
+        throw new Error(json?.error ?? `Server returned HTTP ${res.status}`);
+      }
+      window.location.href = json.url;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
     <>
       <SiteHeader />
       <main className="flex-1">
@@ -92,6 +133,27 @@ export default function PricingPage() {
               Start free forever — upgrade when you need more. No watermarks, no sneaky downgrades.
             </p>
           </div>
+
+          {(success || canceled || error || err) && (
+            <div className="mx-auto mt-8 max-w-xl">
+              {success && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  🎉 Welcome to Pro! Your subscription is now active and all limits are unlocked.
+                  Returning to tools automatically.
+                </div>
+              )}
+              {canceled && !success && (
+                <div className="rounded-xl border border-muted bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                  Your checkout was canceled. No charge was made. Try again whenever you&apos;re ready.
+                </div>
+              )}
+              {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-14 grid gap-6 md:grid-cols-2 md:items-end">
             {/* FREE */}
@@ -109,7 +171,7 @@ export default function PricingPage() {
                 Start free
               </Link>
               <ul className="mt-8 space-y-3 text-sm">
-                {FEATURES.map((f) => (
+                {features.map((f) => (
                   <li key={f.label} className="flex items-start gap-2">
                     <CheckOrValue v={f.free} />
                     <span className="text-muted-foreground">{f.label}</span>
@@ -133,17 +195,47 @@ export default function PricingPage() {
                 </span>
                 <span className="text-sm text-muted-foreground">/month</span>
               </div>
-              <a
-                href="#checkout"
-                className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/20"
-              >
-                Upgrade to Pro
-              </a>
+
+              {/* Email input + Upgrade button (replaces dead <a href="#checkout">) */}
+              <div className="mt-6 space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Email — used to identify your Pro plan
+                </label>
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void onUpgradeClick();
+                  }}
+                  className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+                  autoComplete="email"
+                />
+                <button
+                  type="button"
+                  onClick={onUpgradeClick}
+                  disabled={loading}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                      Preparing checkout…
+                    </>
+                  ) : (
+                    <>Upgrade to Pro</>
+                  )}
+                </button>
+              </div>
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 7-day free trial · no credit card required · cancel anytime
               </p>
               <ul className="mt-8 space-y-3 text-sm">
-                {FEATURES.map((f) => (
+                {features.map((f) => (
                   <li key={f.label} className="flex items-start gap-2">
                     <CheckOrValue v={f.pro} highlight />
                     <span>{f.label}{f.note ? ` · ${f.note}` : ""}</span>
@@ -166,7 +258,7 @@ export default function PricingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {FEATURES.map((f) => (
+                  {features.map((f) => (
                     <tr key={f.label}>
                       <td className="px-5 py-3 font-medium">{f.label}</td>
                       <td className="px-5 py-3"><CheckOrValue v={f.free} /></td>

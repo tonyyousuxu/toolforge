@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { searchTools } from "@/lib/tool-registry";
 import type { ToolDefinition } from "@/lib/tool-registry";
+import { PlanProvider, usePlan } from "@/components/billing/plan-context";
 
 /**
  * Module 1: Sticky Header
@@ -17,6 +18,14 @@ import type { ToolDefinition } from "@/lib/tool-registry";
  *  - THEME SLOT: insert theme toggle next to search if dark-mode shipped.
  * ---------------------------------------------------------------------- */
 export function SiteHeader() {
+  return (
+    <PlanProvider>
+      <SiteHeaderInner />
+    </PlanProvider>
+  );
+}
+
+function SiteHeaderInner() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -94,12 +103,7 @@ export function SiteHeader() {
         </div>
 
         {/* AUTH SLOT — avatar dropdown replaces this when Module 6 active. */}
-        <Link
-          href="/pricing"
-          className="ml-auto inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          Go Pro
-        </Link>
+        <ProButtonOrBadge />
       </div>
 
       {/* Mobile search row */}
@@ -141,5 +145,38 @@ function SearchIcon(props: React.SVGProps<SVGSVGElement>) {
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.3-4.3" />
     </svg>
+  );
+}
+
+/** Shows "Go Pro" CTA for free users, or a "PRO ✓" badge for active subs. */
+function ProButtonOrBadge() {
+  const { plan, loading } = usePlan();
+  if (loading) {
+    return (
+      <div className="ml-auto inline-flex h-10 w-20 items-center justify-center rounded-lg border border-border bg-muted/40" aria-hidden>
+        <span className="h-3 w-10 animate-pulse rounded bg-muted" />
+      </div>
+    );
+  }
+  if (plan === "pro") {
+    return (
+      <Link
+        href="/pricing"
+        title="Manage Pro subscription"
+        className="ml-auto inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+      >
+        <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+        PRO
+        <span className="text-emerald-600">✓</span>
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href="/pricing"
+      className="ml-auto inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20"
+    >
+      Go Pro
+    </Link>
   );
 }

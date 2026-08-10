@@ -16,6 +16,7 @@ import { OptionsRow } from "./options-row";
 import { FileDropZone, type FileItem } from "./file-drop-zone";
 import { TextInputWidget } from "./text-input-widget";
 import { ResultPanel, type ResultState } from "./result-panel";
+import { PlanProvider, usePlan } from "@/components/billing/plan-context";
 
 interface Props {
   tool: ToolDefinition;
@@ -31,6 +32,15 @@ interface Props {
      5. Add result-mapper branch in mapToResultState
    =========================================================================== */
 export function ToolWidget({ tool }: Props) {
+  return (
+    <PlanProvider>
+      <ToolWidgetInner tool={tool} />
+    </PlanProvider>
+  );
+}
+
+function ToolWidgetInner({ tool }: Props) {
+  const { plan } = usePlan();
   const isComingSoon = tool.status !== "live";
 
   // --- Options state: seeded from schema defaults ---
@@ -225,7 +235,7 @@ export function ToolWidget({ tool }: Props) {
             bgColor: String(options.bgColor ?? "#ffffff"),
             errorLevel: String(options.errorCorrection ?? "Medium (15%)"),
             fields: qrFields,
-            plan: "free",
+            plan: plan,
             pngDataUrl: qrOut.png,
             svgMarkup: qrOut.svg,
             epsMarkup: qrOut.eps,
@@ -297,7 +307,7 @@ export function ToolWidget({ tool }: Props) {
               intensity: options.intensity ?? "Balanced (restructured)",
               tone: options.tone ?? "Keep original",
               preserveKeyTerms: Boolean(options.preserveKeyTerms ?? true),
-              plan: "free" as const,
+              plan: plan,
             };
           } else {
             payload = { text, ...options };
