@@ -38,7 +38,6 @@ export function getStripe(): Stripe {
     throw new Error("STRIPE_SECRET_KEY env var is not set");
   }
   stripeClient = new Stripe(secret, {
-    apiVersion: "2024-06-20",
     typescript: true,
     httpClient: Stripe.createFetchHttpClient(),
   });
