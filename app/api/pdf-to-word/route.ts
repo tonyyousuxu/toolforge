@@ -104,8 +104,7 @@ function xmlEscape(s: string): string {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function buildDocxBytes(sections: { heading1?: string; headerSubtitle?: string; footerCenter?: string; pages: { idx: number; paragraphs: { kind: "h" | "p" | "tbl"; level?: 1 | 2 | 3; lines: string[] }[] } }): Uint8Array {
-  const { heading1, headerSubtitle, footerCenter, pages } = sections;
+function buildDocxBytes(sections: { heading1?: string; headerSubtitle?: string; footerCenter?: string; pages: { idx: number; paragraphs: { kind: "h" | "p" | "tbl"; level?: 1 | 2 | 3; lines: string[] }[] }[] }): Uint8Array {
   const children: string[] = [];
   if (sections.heading1) {
     children.push(`<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="30"/></w:rPr><w:t xml:space="preserve">${xmlEscape(sections.heading1)}</w:t></w:r></w:p>`);
