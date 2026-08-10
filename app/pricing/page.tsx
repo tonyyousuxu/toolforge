@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { PRO_FEATURE_MATRIX, PRO_PRICE_MONTHLY_USD } from "@/lib/billing";
+import { PRO_FEATURE_MATRIX, PRO_PRICE_MONTHLY_USD } from "@/lib/billing-config";
 
 /** Merge canonical matrix + a few marketing rows (fidelity, support, trial). */
 function buildFeatures(): Array<{
