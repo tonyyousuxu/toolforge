@@ -49,7 +49,6 @@ export async function POST(req: NextRequest): Promise<Response> {
       mode: "subscription",
       customer_email: email,
       allow_promotion_codes: true,
-      payment_method_types: ["card"],
       line_items: [
         {
           price: priceId,
